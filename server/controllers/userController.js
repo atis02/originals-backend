@@ -7,7 +7,10 @@ class UserController {
         if(!email||!password){
             next(ApiError.badRequest('Email ýa-da açar söz nädogry!'))
         }
-
+        const user = await User.findOne({where:{email}})
+        if(user){
+            next(ApiError.badRequest('Ulanyjy  !'))
+        }
     }
 
     async login(req,res){
