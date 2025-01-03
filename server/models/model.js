@@ -100,8 +100,8 @@ const User = sequelize.define('user', {
     primaryKey: true,
     defaultValue: Sequelize.literal('gen_random_uuid()'), // Используем функцию для генерации UUID
   },
-  email: { type: DataTypes.STRING, unique: true },
-  password: { type: DataTypes.STRING },
+  email: { type: DataTypes.STRING, unique: true,allowNull:false },
+  password: { type: DataTypes.STRING,allowNull:false },
   role: { type: DataTypes.STRING, defaultValue: 'user' },
 }, {
   timestamps: true, // автоматически добавит createdAt и updatedAt
