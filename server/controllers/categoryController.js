@@ -77,7 +77,7 @@ class CategoryController {
     }
     async remove(req, res, next) {
         try {
-            const { id } = req.body;
+            const { id } = req.query;
 
             // Check if the category exists
             const category = await Category.findByPk(id);
