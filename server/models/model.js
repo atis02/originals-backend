@@ -160,6 +160,7 @@ const SubCategory = sequelize.define('subCategory', {
   nameEn: { type: DataTypes.STRING, unique: true, allowNull: false },
   categoryId:{type: DataTypes.UUID, allowNull: false},
   image: { type: DataTypes.STRING, allowNull: true },
+  isActive:{type: DataTypes.BOOLEAN, allowNull: false,defaultValue:true},
 
 });
 

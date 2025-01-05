@@ -56,7 +56,8 @@ class SubCategoryController {
     }
     async remove (req, res,next) {
         try {
-            const {id} = req.body;
+            const { id } = req.query;
+
             const subCategory = await SubCategory.findByPk(id);
             if(!subCategory){
                 return next(ApiError.badRequest('Subkategoriýa tapylmady'))
@@ -71,7 +72,7 @@ class SubCategoryController {
     }
     async update(req, res, next) {
         try {
-            const { nameTm, nameRu, nameEn, id, categoryId } = req.body;
+            const { nameTm, nameRu, nameEn, id, categoryId ,isActive} = req.body;
             const file = req.file;
     
             // Проверяем наличие ID подкатегории
@@ -88,6 +89,7 @@ class SubCategoryController {
              subCategory.nameRu = nameRu;
              subCategory.nameEn = nameEn;
              subCategory.categoryId = categoryId;
+             subCategory.isActive = isActive;
     
             // Обновляем изображение, если файл предоставлен
             if (file) {
