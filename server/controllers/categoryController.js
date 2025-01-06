@@ -52,7 +52,7 @@ class CategoryController {
             return res.json({ message: 'Kategoriýa döredildi!', category });
         } catch (e) {
             console.error(e);
-            return next(ApiError.internal('Kategoriýa döretmekde ýalňyşlyk ýüze çykdy'));
+            return next(ApiError.internal('Kategoriýa döretmekde ýalňyşlyk ýüze çykdy, duyduranyn ucin sag bol bratok'  + e));
         }
     }
     

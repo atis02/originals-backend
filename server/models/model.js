@@ -123,17 +123,82 @@ const BasketProduct = sequelize.define('basketProduct', {
   },
 });
 
+// const Product = sequelize.define('product', {
+//   id: { 
+//     type: DataTypes.UUID, 
+//     primaryKey: true, 
+//     defaultValue: Sequelize.literal('gen_random_uuid()'), // Используем UUID
+//   },
+//   name: { type: DataTypes.STRING, unique: true, allowNull: false },
+//   price: { type: DataTypes.INTEGER, allowNull: false },
+//   categoryId: { type: DataTypes.STRING },
+//   subCategoryId: { type: DataTypes.STRING },
+//   image: { type: DataTypes.STRING, allowNull: false },
+// });
+
 const Product = sequelize.define('product', {
-  id: { 
-    type: DataTypes.UUID, 
-    primaryKey: true, 
+  id: {
+    type: DataTypes.UUID,
+    primaryKey: true,
+    defaultValue: Sequelize.literal('gen_random_uuid()'), // Auto-generate UUID
+  },
+  nameTm: { type: DataTypes.STRING,  allowNull: false },
+  nameRu: { type: DataTypes.STRING,  allowNull: false },
+  nameEn: { type: DataTypes.STRING,  allowNull: false },
+  barcode:{ type: DataTypes.STRING, allowNull: false },
+  categoryId: { type: DataTypes.STRING,allowNull: false },
+  subCategoryId: { type: DataTypes.STRING ,allowNull: false},
+  isActive: { type: DataTypes.BOOLEAN,defaultValue: true },
+ 
+});
+const ProductColorDetails = sequelize.define('ProductColorDetails', {
+  id: {
+    type: DataTypes.UUID,
+    primaryKey: true,
+    defaultValue: Sequelize.literal('gen_random_uuid()'), // Auto-generate UUID
+  },
+  nameTm: { type: DataTypes.STRING, allowNull: false },
+  nameRu: { type: DataTypes.STRING, allowNull: false },
+  nameEn: { type: DataTypes.STRING, allowNull: false },
+  descriptionTm: { type: DataTypes.STRING, allowNull: false },
+  descriptionRu: { type: DataTypes.STRING, allowNull: false },
+  descriptionEn: { type: DataTypes.STRING, allowNull: false },
+  sellPrice: { type: DataTypes.INTEGER, allowNull: false },
+  incomePrice: { type: DataTypes.INTEGER, allowNull: false },
+  discount_priceTMT: { type: DataTypes.INTEGER, allowNull: true },
+  discount_pricePercent: { type: DataTypes.INTEGER, allowNull: true },
+  productColorId: {
+    type: DataTypes.JSONB, // Используем JSONB для хранения информации о цвете
+    allowNull: false,
+    defaultValue: { colorName: "", type: "" } // Установите значения по умолчанию для структуры
+  },
+  minImage: { type: DataTypes.STRING, allowNull: false },
+  hoverImage: { type: DataTypes.STRING, allowNull: false },
+  fullImages: {
+    type: DataTypes.ARRAY(DataTypes.STRING), // Массив путей изображений
+    allowNull: false,
+    defaultValue: [], // Пустой массив по умолчанию
+  },
+  productQuantity: { type: DataTypes.INTEGER, allowNull: false }
+});
+
+
+const SizeTable = sequelize.define('sizeTable', {
+  id: {
+    type: DataTypes.UUID,
+    primaryKey: true,
     defaultValue: Sequelize.literal('gen_random_uuid()'), // Используем UUID
   },
-  name: { type: DataTypes.STRING, unique: true, allowNull: false },
-  price: { type: DataTypes.INTEGER, allowNull: false },
-  category: { type: DataTypes.STRING },
-  image: { type: DataTypes.STRING, allowNull: false },
+  name: { type: DataTypes.STRING, allowNull: false },
+ 
 });
+const Size = sequelize.define('size', {
+        id:{type:DataTypes.UUID,primaryKey: true,defaultValue: Sequelize.literal('gen_random_uuid()')},
+        order:{type:DataTypes.INTEGER,allowNull:false} ,
+        sizeTableId:{type:DataTypes.UUID,allowNull:false},
+        name: { type: DataTypes.STRING, allowNull: false },
+})
+
 
 const Category = sequelize.define('category', {
   id: {
@@ -148,7 +213,6 @@ const Category = sequelize.define('category', {
   image: { type: DataTypes.STRING, allowNull: true },
   
 });
-
 const SubCategory = sequelize.define('subCategory', {
   id: {
     type: DataTypes.UUID,
@@ -189,6 +253,22 @@ BasketProduct.belongsTo(Product);
 Product.hasMany(ProductInfo);
 ProductInfo.belongsTo(Product);
 
+// Product.hasMany(ProductColorDetails);
+// ProductColorDetails.belongsTo(Product);
+
+SizeTable.hasMany(Size);
+Size.belongsTo(SizeTable);
+
+Product.hasMany(ProductColorDetails, {
+  foreignKey: 'productId',
+  as: 'ProductColorDetails',
+});
+
+ProductColorDetails.belongsTo(Product, {
+  foreignKey: 'productId',
+  as: 'product',
+});
+
 Product.belongsTo(Category, { as: 'productCategory', foreignKey: 'categoryId' });
 Category.hasMany(Product, { as: 'products', foreignKey: 'categoryId' });
 
@@ -198,4 +278,7 @@ SubCategory.hasMany(Product, { as: 'products', foreignKey: 'subCategoryId' });
 Category.hasMany(SubCategory, { as: 'subCategories', foreignKey: 'categoryId' });
 SubCategory.belongsTo(Category, { as: 'parentCategory', foreignKey: 'categoryId' });
 
-module.exports = { User, Basket, BasketProduct, Product, Category, SubCategory, ProductInfo };
+// SizeTable.hasMany(Size, { as: 'sizes', foreignKey: 'categoryId' });
+// SubCategory.belongsTo(Category, { as: 'parentCategory', foreignKey: 'categoryId' });
+
+module.exports = { User, Basket, BasketProduct, Product,SizeTable,Size,ProductColorDetails, Category, SubCategory, ProductInfo };
