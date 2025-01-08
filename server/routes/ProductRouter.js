@@ -16,16 +16,42 @@ const storage = multer.diskStorage({
 })
 const upload = multer({ storage: storage })
 
-// router.post('/',productController.create)
-// router.get('/')
-// router.get('/:id')
 
-router.post('/add', upload.fields([
-    { name: 'minImage', maxCount: 1 },
-    { name: 'hoverImage', maxCount: 1 },
-    { name: 'fullImages', maxCount: 9 },
-]), productController.create);
 
-  router.get('/all', productController.getAll);  // Assuming getAll is implemented
-//   router.get('/:id', productController.getOne); 
-module.exports=router
+    router.post(
+      "/add",
+      upload.fields([
+        { name: "minImage", maxCount: 1 },
+        { name: "hoverImage", maxCount: 1 },
+        { name: "fullImages", maxCount: 9 },
+      ]),
+      productController.create
+    );
+    router.post(
+      "/add/newColor",
+      upload.fields([
+        { name: "minImage", maxCount: 1 },
+        { name: "hoverImage", maxCount: 1 },
+        { name: "fullImages", maxCount: 9 },
+      ]),
+      productController.addColorDetail
+    );
+
+    router.get("/all", productController.getAll);
+    router.get("/getOne", productController.getOne);
+
+    router.delete("/remove", productController.deleteProduct);
+    router.delete("/removeColorDetails", productController.deleteColorDetail);
+
+    // router.put('/update', productController.updateProduct);
+    router.put(
+      "/update",
+      upload.fields([
+        { name: "minImage", maxCount: 1 },
+        { name: "hoverImage", maxCount: 1 },
+        { name: "fullImages", maxCount: 9 },
+      ]),
+      productController.update
+    );
+
+    module.exports = router;
