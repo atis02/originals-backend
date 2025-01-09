@@ -115,7 +115,7 @@ const ProductColorDetails = sequelize.define("ProductColorDetails", {
     allowNull: true,
     defaultValue: 0,
   },
-  sizeTableId: { type: DataTypes.UUID, allowNull: false },
+  // sizeTableId: { type: DataTypes.UUID, allowNull: false },
 
   // Store sizes with quantities as an array of objects
   sizesWithQuantities: {
@@ -132,7 +132,7 @@ const ProductColorDetails = sequelize.define("ProductColorDetails", {
     allowNull: false,
     defaultValue: [],
   },
-  productQuantity: { type: DataTypes.INTEGER, allowNull: false },
+  // productQuantity: { type: DataTypes.INTEGER, allowNull: false },
 });
 
 const SizeTable = sequelize.define("sizeTable", {

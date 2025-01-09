@@ -64,9 +64,8 @@ class SubCategoryController {
             }
             await subCategory.destroy();
             return res.json({ message: 'Üstünlikli!' });
-            
         } catch (error) {
-            console.error(e);
+            console.error(error);
             return next(ApiError.internal('Ýalňyşlyk!'));
         }
     }

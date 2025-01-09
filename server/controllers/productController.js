@@ -27,9 +27,6 @@ class ProductController {
         "descriptionEn",
         "sellPrice",
         "incomePrice",
-        "productQuantity",
-        "productColorId",
-        "sizeTableId",
         "sizesWithQuantities", // sizes and quantities
       ];
       const requiredFieldsProduct = [
