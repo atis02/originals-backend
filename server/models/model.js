@@ -125,11 +125,11 @@ const ProductColorDetails = sequelize.define("ProductColorDetails", {
   },
 
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
-  minImage: { type: DataTypes.STRING, allowNull: false },
-  hoverImage: { type: DataTypes.STRING, allowNull: false },
+  minImage: { type: DataTypes.STRING, allowNull: true },
+  hoverImage: { type: DataTypes.STRING, allowNull: true },
   fullImages: {
     type: DataTypes.ARRAY(DataTypes.STRING), // Array of image paths
-    allowNull: false,
+    allowNull: true,
     defaultValue: [],
   },
   // productQuantity: { type: DataTypes.INTEGER, allowNull: false },
