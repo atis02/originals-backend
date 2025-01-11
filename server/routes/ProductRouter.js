@@ -23,7 +23,7 @@ const upload = multer({ storage: storage })
       upload.fields([
         { name: "minImage", maxCount: 1 },
         { name: "hoverImage", maxCount: 1 },
-        { name: "fullImages", maxCount: 9 },
+        { name: "fullImages", maxCount: 6 },
       ]),
       productController.create
     );
@@ -32,7 +32,7 @@ const upload = multer({ storage: storage })
       upload.fields([
         { name: "minImage", maxCount: 1 },
         { name: "hoverImage", maxCount: 1 },
-        { name: "fullImages", maxCount: 9 },
+        { name: "fullImages", maxCount: 6 },
       ]),
       productController.addColorDetail
     );
@@ -43,15 +43,15 @@ const upload = multer({ storage: storage })
     router.delete("/remove", productController.deleteProduct);
     router.delete("/removeColorDetails", productController.deleteColorDetail);
 
-    // router.put('/update', productController.updateProduct);
+    router.put("/updateProduct", productController.updateProduct);
     router.put(
       "/update",
       upload.fields([
         { name: "minImage", maxCount: 1 },
         { name: "hoverImage", maxCount: 1 },
-        { name: "fullImages", maxCount: 9 },
+        { name: "fullImages", maxCount: 6 },
       ]),
-      productController.update
+      productController.updateProductDetails
     );
 
     module.exports = router;

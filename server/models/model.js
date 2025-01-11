@@ -48,49 +48,7 @@ const Product = sequelize.define("product", {
   subCategoryId: { type: DataTypes.STRING, allowNull: false },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
-// const ProductColorDetails = sequelize.define("ProductColorDetails", {
-//   id: {
-//     type: DataTypes.UUID,
-//     primaryKey: true,
-//     defaultValue: Sequelize.literal("gen_random_uuid()"), // Auto-generate UUID
-//   },
-//   nameTm: { type: DataTypes.STRING, allowNull: false },
-//   nameRu: { type: DataTypes.STRING, allowNull: false },
-//   nameEn: { type: DataTypes.STRING, allowNull: false },
-//   descriptionTm: { type: DataTypes.STRING, allowNull: false },
-//   descriptionRu: { type: DataTypes.STRING, allowNull: false },
-//   descriptionEn: { type: DataTypes.STRING, allowNull: false },
-//   sellPrice: { type: DataTypes.INTEGER, allowNull: false },
-//   incomePrice: { type: DataTypes.INTEGER, allowNull: false },
-//   discount_priceTMT: {
-//     type: DataTypes.INTEGER,
-//     allowNull: true,
-//     defaultValue: 0,
-//   },
-//   discount_pricePercent: {
-//     type: DataTypes.INTEGER,
-//     allowNull: true,
-//     defaultValue: 0,
-//   },
-//   sizeTableId: { type: DataTypes.UUID, allowNull: false },
-//   // sizes: {
-//   //   // id:DataTypes.UUID,allowNull: false,
-//   //   type: DataTypes.ARRAY(DataTypes.STRING), // Массив путей изображений
-//   //   allowNull: false,
-//   //   defaultValue: [],
-//   // },
 
-//   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
-
-//   minImage: { type: DataTypes.STRING, allowNull: false },
-//   hoverImage: { type: DataTypes.STRING, allowNull: false },
-//   fullImages: {
-//     type: DataTypes.ARRAY(DataTypes.STRING), // Массив путей изображений
-//     allowNull: false,
-//     defaultValue: [], // Пустой массив по умолчанию
-//   },
-//   productQuantity: { type: DataTypes.INTEGER, allowNull: false },
-// });
 const ProductColorDetails = sequelize.define("ProductColorDetails", {
   id: {
     type: DataTypes.UUID,
@@ -134,7 +92,91 @@ const ProductColorDetails = sequelize.define("ProductColorDetails", {
   },
   // productQuantity: { type: DataTypes.INTEGER, allowNull: false },
 });
-
+// const ProductColorDetails = sequelize.define("ProductColorDetails", {
+//   id: {
+//     type: DataTypes.UUID,
+//     primaryKey: true,
+//     defaultValue: Sequelize.literal("gen_random_uuid()"), // Automatically generate UUID
+//   },
+//   nameTm: {
+//     type: DataTypes.STRING,
+//     allowNull: false
+//   },
+//   nameRu: {
+//     type: DataTypes.STRING,
+//     allowNull: false
+//   },
+//   nameEn: {
+//     type: DataTypes.STRING,
+//     allowNull: false
+//   },
+//   descriptionTm: {
+//     type: DataTypes.TEXT,
+//     allowNull: false
+//   }, // Use TEXT for longer descriptions
+//   descriptionRu: {
+//     type: DataTypes.TEXT,
+//     allowNull: false
+//   },
+//   descriptionEn: {
+//     type: DataTypes.TEXT,
+//     allowNull: false
+//   },
+//   sellPrice: {
+//     type: DataTypes.FLOAT, // FLOAT allows for fractional prices if needed
+//     allowNull: false
+//   },
+//   incomePrice: {
+//     type: DataTypes.FLOAT,
+//     allowNull: false
+//   },
+//   discountPriceTMT: {
+//     type: DataTypes.FLOAT,
+//     allowNull: true,
+//     defaultValue: 0
+//   },
+//   discountPricePercent: {
+//     type: DataTypes.INTEGER,
+//     allowNull: true,
+//     defaultValue: 0
+//   },
+//   sizesWithQuantities: {
+//     type: DataTypes.JSONB, // JSONB is better for handling structured data like sizes and quantities
+//     allowNull: false,
+//     defaultValue: [], // Default to an empty array
+//   },
+//   isActive: {
+//     type: DataTypes.BOOLEAN,
+//     defaultValue: true
+//   },
+//   minImage: {
+//     type: DataTypes.STRING,
+//     allowNull: true
+//   }, // Path to the minimum image
+//   hoverImage: {
+//     type: DataTypes.STRING,
+//     allowNull: true
+//   }, // Path to the hover image
+//   fullImages: {
+//     type: DataTypes.ARRAY(DataTypes.STRING), // Array of image paths
+//     allowNull: true,
+//     defaultValue: [],
+//   },
+//   productId: {
+//     type: DataTypes.UUID,
+//     allowNull: false,
+//     references: {
+//       model: "Products", // Name of the referenced table
+//       key: "id",         // Primary key in the referenced table
+//     },
+//     onUpdate: "CASCADE",
+//     onDelete: "CASCADE",
+//   },
+// }, {
+//   tableName: "ProductColorDetails", // Explicitly define table name if needed
+//   timestamps: true, // Automatically adds createdAt and updatedAt fields
+//   underscored: true, // Converts camelCase fields to snake_case in the database
+// });
 const SizeTable = sequelize.define("sizeTable", {
   id: {
     type: DataTypes.UUID,
@@ -230,6 +272,7 @@ Size.belongsTo(SizeTable, {
 Product.hasMany(ProductColorDetails, {
   foreignKey: "productId",
   as: "ProductColorDetails",
+  onDelete: "CASCADE",
 });
 
 ProductColorDetails.belongsTo(Product, {
@@ -241,17 +284,26 @@ Product.belongsTo(Category, {
   as: "productCategory",
   foreignKey: "categoryId",
 });
-Category.hasMany(Product, { as: "products", foreignKey: "categoryId" });
+Category.hasMany(Product, {
+  as: "products",
+  foreignKey: "categoryId",
+  onDelete: "CASCADE",
+});
 
 Product.belongsTo(SubCategory, {
   as: "subCategory",
   foreignKey: "subCategoryId",
 });
-SubCategory.hasMany(Product, { as: "products", foreignKey: "subCategoryId" });
+SubCategory.hasMany(Product, {
+  as: "products",
+  foreignKey: "subCategoryId",
+  onDelete: "CASCADE",
+});
 
 Category.hasMany(SubCategory, {
   as: "subCategories",
   foreignKey: "categoryId",
+  onDelete: "CASCADE",
 });
 SubCategory.belongsTo(Category, {
   as: "parentCategory",

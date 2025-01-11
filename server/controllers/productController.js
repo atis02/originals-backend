@@ -56,13 +56,13 @@ class ProductController {
 
       // Parse the images from the request
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/static/${req.files.minImage[0].filename}`
+        ? `/${req.files.minImage[0].filename}`
         : null;
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/static/${req.files.hoverImage[0].filename}`
+        ? `/${req.files.hoverImage[0].filename}`
         : null;
       const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/static/${file.filename}`) || [];
+        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
 
       // Create the product
       const product = await Product.create(
@@ -120,18 +120,16 @@ class ProductController {
           ApiError.badRequest("Invalid JSON format for color detail")
         );
       }
+      console.log(parsedColorDetail);
 
       // Validate required fields
       const requiredFields = [
         "nameTm",
         "nameRu",
         "nameEn",
-        "descriptionTm",
-        "descriptionRu",
-        "descriptionEn",
         "sellPrice",
         "incomePrice",
-        "productQuantity",
+        "sizesWithQuantities",
       ];
 
       for (const field of requiredFields) {
@@ -139,6 +137,17 @@ class ProductController {
           return next(ApiError.badRequest(`${field} is required`));
         }
       }
+      // for (const [index, colorDetail] of parsedColorDetail.entries()) {
+      //   for (const field of requiredFields) {
+      //     if (!colorDetail[field]) {
+      //       return next(
+      //         ApiError.badRequest(
+      //           `Field ${field} is required in colorDetail at index ${index}`
+      //         )
+      //       );
+      //     }
+      //   }
+      // }
 
       const product = await Product.findByPk(productId);
       if (!product) {
@@ -146,15 +155,15 @@ class ProductController {
       }
 
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/static/${req.files.minImage[0].filename}`
+        ? `/${req.files.minImage[0].filename}`
         : null;
 
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/static/${req.files.hoverImage[0].filename}`
+        ? `/${req.files.hoverImage[0].filename}`
         : null;
 
       const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/static/${file.filename}`) || [];
+        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
 
       if (!minImagePath || !hoverImagePath) {
         return next(
@@ -186,51 +195,94 @@ class ProductController {
       return next(ApiError.badRequest(error.message));
     }
   }
-
-  async update(req, res, next) {
+  async updateProduct(req, res, next) {
     const transaction = await sequelize.transaction(); // Start a transaction
     try {
-      const { productId, productColorId, productDetail, colorDetails } =
-        req.body;
-      const parsedProductDetails = JSON.parse(productDetail);
-      const parsedColorDetails = JSON.parse(colorDetails || "[]");
+      const {
+        nameTm,
+        nameRu,
+        nameEn,
+        barcode,
+        categoryId,
+        subCategoryId,
+        isActive,
+        id, // Product ID
+      } = req.body;
 
-      // Ensure all required fields are present for both product and color details
+      // Validate required fields
       const requiredFields = [
-        "nameTm",
-        "nameRu",
-        "nameEn",
-        "descriptionTm",
-        "descriptionRu",
-        "descriptionEn",
-        "sellPrice",
-        "incomePrice",
-        "productQuantity",
-        // "productColorId",
-        "sizesWithQuantities", // sizes and quantities
-      ];
-      const requiredFieldsProduct = [
         "nameTm",
         "nameRu",
         "nameEn",
         "barcode",
         "categoryId",
         "subCategoryId",
+        "id", // Product ID must be included
       ];
 
-      // Validate required fields for color details
       for (const field of requiredFields) {
-        if (!parsedColorDetails[0][field]) {
-          return next(
-            ApiError.badRequest(`${field} in product color detail is required`)
-          );
+        if (!req.body[field]) {
+          return next(ApiError.badRequest(`${field} is required`));
         }
       }
 
-      // Validate required fields for product
-      for (const field of requiredFieldsProduct) {
-        if (!parsedProductDetails[field]) {
-          return next(ApiError.badRequest(`${field} in product is required`));
+      // Check if the product exists
+      const product = await Product.findByPk(id);
+      if (!product) {
+        return next(ApiError.badRequest("Product not found"));
+      }
+
+      // Update the product details
+      await product.update(
+        {
+          nameTm,
+          nameRu,
+          nameEn,
+          barcode,
+          categoryId,
+          subCategoryId,
+          isActive: isActive ?? product.isActive, // Update isActive only if provided
+        },
+        { transaction }
+      );
+
+      // Commit the transaction
+      await transaction.commit();
+
+      return res.status(200).json({
+        message: "Product updated successfully",
+        product, // Return updated product
+      });
+    } catch (error) {
+      await transaction.rollback(); // Rollback on error
+      console.error("Error updating product:", error);
+      return next(ApiError.badRequest(` ${error.message}`));
+    }
+  }
+
+  
+  async updateProductDetails(req, res, next) {
+    const transaction = await sequelize.transaction(); // Start a transaction
+    try {
+      const { productId, colorDetailId, colorDetail } = req.body; // Take productId, colorDetailId, and colorDetail from request body
+      const parsedColorDetail = JSON.parse(colorDetail || "{}");
+
+      // Required fields for product details
+      const requiredFields = [
+        "nameTm",
+        "nameRu",
+        "nameEn",
+        "sellPrice",
+        "incomePrice",
+        "sizesWithQuantities",
+      ];
+
+      // Validate required fields for the color detail
+      for (const field of requiredFields) {
+        if (!parsedColorDetail[field]) {
+          return next(
+            ApiError.badRequest(`${field} is required in product color detail`)
+          );
         }
       }
 
@@ -242,84 +294,68 @@ class ProductController {
 
       // Parse the images from the request if provided
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/static/${req.files.minImage[0].filename}`
+        ? `/${req.files.minImage[0].filename}`
         : null;
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/static/${req.files.hoverImage[0].filename}`
+        ? `/${req.files.hoverImage[0].filename}`
         : null;
       const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/static/${file.filename}`) || [];
+        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
 
-      // Update the product details
-      await product.update(
-        {
-          nameTm: parsedProductDetails.nameTm,
-          nameRu: parsedProductDetails.nameRu,
-          nameEn: parsedProductDetails.nameEn,
-          barcode: parsedProductDetails.barcode,
-          categoryId: parsedProductDetails.categoryId,
-          subCategoryId: parsedProductDetails.subCategoryId,
-        },
-        { transaction }
-      );
+      // Update the existing color detail if colorDetailId is provided
+      if (colorDetailId) {
+        // Find the existing color detail by its ID and productId
+        const existingColorDetail = await ProductColorDetails.findOne({
+          where: {
+            id: colorDetailId,
+            productId: product.id,
+          },
+        });
 
-      // If color details exist, update them
-      if (parsedColorDetails.length) {
-        for (const detail of parsedColorDetails) {
-          const existingColorDetail = await ProductColorDetails.findOne({
-            where: {
-              productId: product.id,
-              //   productColorId: productColorId,
+        if (existingColorDetail) {
+          // Update the existing color detail
+          await existingColorDetail.update(
+            {
+              ...parsedColorDetail, // Update with new details
+              minImage: minImagePath || existingColorDetail.minImage,
+              hoverImage: hoverImagePath || existingColorDetail.hoverImage,
+              fullImages: fullImagePaths.length
+                ? fullImagePaths
+                : existingColorDetail.fullImages,
+              sizesWithQuantities:
+                parsedColorDetail.sizesWithQuantities ||
+                existingColorDetail.sizesWithQuantities,
             },
-          });
-
-          // If the color detail doesn't exist, create a new one
-          if (!existingColorDetail) {
-            await ProductColorDetails.create(
-              {
-                ...detail,
-                productId: product.id,
-                minImage: minImagePath,
-                hoverImage: hoverImagePath,
-                fullImages: fullImagePaths,
-                sizesWithQuantities: detail.sizesWithQuantities || [],
-              },
-              { transaction }
-            );
-          } else {
-            // If color detail exists, update it
-            await existingColorDetail.update(
-              {
-                ...detail,
-                minImage: minImagePath || existingColorDetail.minImage,
-                hoverImage: hoverImagePath || existingColorDetail.hoverImage,
-                fullImages: fullImagePaths.length
-                  ? fullImagePaths
-                  : existingColorDetail.fullImages,
-                sizesWithQuantities: detail.sizesWithQuantities || [],
-              },
-              { transaction }
-            );
-          }
+            { transaction }
+          );
+        } else {
+          return next(
+            ApiError.badRequest(
+              `Color detail with ID ${colorDetailId} not found`
+            )
+          );
         }
+      } else {
+        return next(ApiError.badRequest("colorDetailId is required"));
       }
 
       // Commit the transaction
       await transaction.commit();
 
       return res.status(200).json({
-        message: "Product and color details updated successfully",
-        product, // Return the updated product
+        message: "Product color detail updated successfully",
       });
     } catch (error) {
       await transaction.rollback(); // Rollback on error
-      console.error("Error updating product:", error);
+      console.error("Error updating product details:", error);
       return next(
-        ApiError.badRequest(`Failed to update product: ${error.message}`)
+        ApiError.badRequest(
+          `Failed to update product details: ${error.message}`
+        )
       );
     }
   }
-
+  
   async getAll(req, res, next) {
     try {
       const filter = {};
