@@ -46,7 +46,10 @@ const Product = sequelize.define("product", {
   barcode: { type: DataTypes.STRING, allowNull: false },
   categoryId: { type: DataTypes.STRING, allowNull: false },
   subCategoryId: { type: DataTypes.STRING, allowNull: false },
+  segmentId: { type: DataTypes.STRING, allowNull: false },
+  statusId: {type: DataTypes.STRING,  allowNull: false },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+
 });
 
 const ProductColorDetails = sequelize.define("ProductColorDetails", {
@@ -91,6 +94,18 @@ const ProductColorDetails = sequelize.define("ProductColorDetails", {
     defaultValue: [],
   },
   // productQuantity: { type: DataTypes.INTEGER, allowNull: false },
+});
+const Status = sequelize.define("status", {
+  id: {
+    type: DataTypes.UUID,
+    primaryKey: true,
+    defaultValue: Sequelize.literal("gen_random_uuid()"), // Используем UUID
+  },
+  nameTm: { type: DataTypes.STRING, allowNull: false },
+  nameRu: { type: DataTypes.STRING, allowNull: false },
+  nameEn: { type: DataTypes.STRING, allowNull: false },
+  isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+
 });
 // const ProductColorDetails = sequelize.define("ProductColorDetails", {
 //   id: {
@@ -221,6 +236,19 @@ const SubCategory = sequelize.define("subCategory", {
   image: { type: DataTypes.STRING, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 });
+const Segment = sequelize.define("segment", {
+  id: {
+    type: DataTypes.UUID,
+    primaryKey: true,
+    defaultValue: Sequelize.literal("gen_random_uuid()"), // Используем UUID
+  },
+  nameTm: { type: DataTypes.STRING, unique: true, allowNull: false },
+  nameRu: { type: DataTypes.STRING, unique: true, allowNull: false },
+  nameEn: { type: DataTypes.STRING, unique: true, allowNull: false },
+  subCategoryId: { type: DataTypes.UUID, allowNull: false },
+  image: { type: DataTypes.STRING, allowNull: true },
+  isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+});
 
 const ProductInfo = sequelize.define("productInfo", {
   id: {
@@ -290,6 +318,27 @@ Category.hasMany(Product, {
   onDelete: "CASCADE",
 });
 
+Product.belongsTo(Segment, {
+  as: "segment",
+  foreignKey: "segmentId",
+});
+Segment.hasMany(Product, {
+  as: "products",
+  foreignKey: "segmentId",
+  onDelete: "CASCADE",
+});
+
+// Define the relationship
+Product.belongsTo(Status, {
+  foreignKey: "statusId",
+  as: "status",
+});
+Status.hasMany(Product, {
+  foreignKey: "statusId",
+  as: "products",
+});
+
+
 Product.belongsTo(SubCategory, {
   as: "subCategory",
   foreignKey: "subCategoryId",
@@ -312,6 +361,15 @@ SubCategory.belongsTo(Category, {
 
 // SizeTable.hasMany(Size, { as: 'sizes', foreignKey: 'categoryId' });
 // SubCategory.belongsTo(Category, { as: 'parentCategory', foreignKey: 'categoryId' });
+SubCategory.hasMany(Segment, {
+  as: "segments",
+  foreignKey: "subCategoryId",
+  onDelete: "CASCADE",
+});
+Segment.belongsTo(SubCategory, {
+  as: "parentSubCategory",
+  foreignKey: "subCategoryId",
+});
 
 module.exports = {
   User,
@@ -324,4 +382,6 @@ module.exports = {
   Category,
   SubCategory,
   ProductInfo,
+  Segment,
+  Status
 };

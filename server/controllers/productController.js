@@ -36,6 +36,8 @@ class ProductController {
         "barcode",
         "categoryId",
         "subCategoryId",
+        "statusId",
+        "segmentId"
       ];
 
       // Validate required fields for color details
@@ -73,6 +75,8 @@ class ProductController {
           barcode: parsedProductDetails.barcode,
           categoryId: parsedProductDetails.categoryId,
           subCategoryId: parsedProductDetails.subCategoryId,
+          segmentId: parsedProductDetails.segmentId,
+          statusId: parsedProductDetails.statusId,
           // isActive: isActive || true, // Uncomment if needed
         },
         { transaction }
@@ -458,7 +462,6 @@ class ProductController {
     }
   }
 
-  static filter = () => {};
 
   async getOne(req, res, next) {
     try {
