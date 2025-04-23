@@ -4,6 +4,10 @@ const {
   Category,
   SizeTable,
   Size,
+  SubCategory,
+  Segment,
+  Status,
+  Brand,
 } = require("../models/model");
 const ApiError = require("../error/apiError");
 const sequelize = require("../database");
@@ -16,19 +20,9 @@ class ProductController {
       const { productDetail, colorDetail } = req.body;
       const parsedProductDetails = JSON.parse(productDetail);
       const parsedColorDetails = JSON.parse(colorDetail || "[]");
+      console.log(parsedColorDetails);
 
-      // Ensure all required fields are present for both product and color details
-      const requiredFields = [
-        "nameTm",
-        "nameRu",
-        "nameEn",
-        "descriptionTm",
-        "descriptionRu",
-        "descriptionEn",
-        "sellPrice",
-        "incomePrice",
-        "sizesWithQuantities", // sizes and quantities
-      ];
+      // Required fields validation
       const requiredFieldsProduct = [
         "nameTm",
         "nameRu",
@@ -36,35 +30,88 @@ class ProductController {
         "barcode",
         "categoryId",
         "subCategoryId",
-        "statusId",
-        "segmentId"
+        "segmentId",
+        "brandId",
       ];
-
-      // Validate required fields for color details
-      for (const field of requiredFields) {
-        if (!parsedColorDetails[0][field]) {
-          return next(
-            ApiError.badRequest(`${field} in product color detail is required`)
-          );
-        }
-      }
-
-      // Validate required fields for product
       for (const field of requiredFieldsProduct) {
         if (!parsedProductDetails[field]) {
           return next(ApiError.badRequest(`${field} in product is required`));
         }
       }
 
-      // Parse the images from the request
+      // if (parsedColorDetails.length) {
+      const requiredFieldsColor = [
+        "productTypeNameTm",
+        "productTypeNameRu",
+        "productTypeNameEn",
+        "sizesWithQuantities",
+        "typeStatusId",
+        "sizeTableId",
+        "sellPrice",
+        "incomePrice",
+      ];
+      for (const field of requiredFieldsColor) {
+        for (const color of parsedColorDetails) {
+          if (!color[field]) {
+            return next(
+              ApiError.badRequest(
+                `${field} in product color detail is required`
+              )
+            );
+          }
+        }
+      }
+
+      const checks = [
+        {
+          model: Category,
+          id: parsedProductDetails.categoryId,
+          name: "Kategoriýa",
+        },
+        {
+          model: SubCategory,
+          id: parsedProductDetails.subCategoryId,
+          name: "Subkategoriýa",
+        },
+        { model: Segment, id: parsedProductDetails.segmentId, name: "Segment" },
+        // {
+        //   model: Status,
+        //   id: parsedColorDetails[0].typeStatusId,
+        //   name: "Status",
+        // },
+        { model: Brand, id: parsedProductDetails.brandId, name: "Brand" },
+      ];
+      for (const check of checks) {
+        const exists = await check.model.findByPk(check.id);
+        if (!exists) {
+          return next(ApiError.badRequest(`${check.name} tapylmady!`));
+        }
+      }
+      const { imageOne, imageTwo, imageThree, imageFour, imageFive } =
+        req.files || {};
+
+      const imagePaths = {
+        imageOne: imageOne?.[0]?.filename || null,
+        imageTwo: imageTwo?.[0]?.filename || null,
+        imageThree: imageThree?.[0]?.filename || null,
+        imageFour: imageFour?.[0]?.filename || null,
+        imageFive: imageFive?.[0]?.filename || null,
+      };
+      const hasAtLeastOneImage = Object.values(imagePaths).some(
+        (filename) => filename !== null
+      );
+
+      if (!hasAtLeastOneImage) {
+        return res
+          .status(400)
+          .json({ message: "At least one image is required." });
+      }
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/${req.files.minImage[0].filename}`
+        ? req.files.minImage[0].filename
         : null;
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/${req.files.hoverImage[0].filename}`
+        ? req.files.hoverImage[0].filename
         : null;
-      const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
 
       // Create the product
       const product = await Product.create(
@@ -76,34 +123,63 @@ class ProductController {
           categoryId: parsedProductDetails.categoryId,
           subCategoryId: parsedProductDetails.subCategoryId,
           segmentId: parsedProductDetails.segmentId,
-          statusId: parsedProductDetails.statusId,
-          // isActive: isActive || true, // Uncomment if needed
+          brandId: parsedProductDetails.brandId,
         },
         { transaction }
       );
 
-      // If color details exist, create them
-      if (parsedColorDetails.length) {
-        const colorDetailsData = parsedColorDetails.map((detail) => ({
-          ...detail,
-          productId: product.id,
-          minImage: minImagePath,
-          hoverImage: hoverImagePath,
-          fullImages: fullImagePaths,
-          sizesWithQuantities: detail.sizesWithQuantities || [], // Ensure sizes with quantities are included
-        }));
+      // Create product details (colors)
+      for (const colorDetail of parsedColorDetails) {
+        const productDetail = await ProductColorDetails.create(
+          {
+            productId: product.id,
+            productTypeNameTm: colorDetail.productTypeNameTm,
+            productTypeNameRu: colorDetail.productTypeNameRu,
+            productTypeNameEn: colorDetail.productTypeNameEn,
+            descriptionTm: colorDetail.descriptionTm,
+            descriptionRu: colorDetail.descriptionRu,
+            descriptionEn: colorDetail.descriptionEn,
+            sellPrice: colorDetail.sellPrice,
+            incomePrice: colorDetail.incomePrice,
+            sizeTableId: colorDetail.sizeTableId,
+            typeStatusId: colorDetail.typeStatusId,
+            discount_priceTMT: colorDetail.discount_priceTMT,
+            discount_pricePercent: colorDetail.discount_pricePercent,
+            minImage: minImagePath,
+            hoverImage: hoverImagePath,
+            ...imagePaths,
+          },
+          { transaction }
+        );
 
-        await ProductColorDetails.bulkCreate(colorDetailsData, { transaction });
+        for (const detail of parsedColorDetails) {
+          for (const sizeData of detail.sizesWithQuantities) {
+            if (!sizeData.size) {
+              throw new Error("Size name cannot be null");
+            }
+
+            await Size.create(
+              {
+                productId: product.id,
+                size: sizeData.size,
+                quantity: sizeData.quantity || 0,
+                sizeTableId: detail.sizeTableId,
+                colorDetailId: productDetail.id, // Ensure this is defined
+              },
+              { transaction }
+            );
+          }
+        }
       }
 
       await transaction.commit();
 
       return res.status(201).json({
         product,
-        message: "Product and color details created successfully",
+        message: "Product, colors, and sizes created successfully",
       });
     } catch (error) {
-      await transaction.rollback(); // Rollback on error
+      await transaction.rollback(); // Rollback transaction on error
       console.error("Error creating product:", error);
       return next(
         ApiError.badRequest(`Failed to create product: ${error.message}`)
@@ -115,22 +191,13 @@ class ProductController {
     const transaction = await sequelize.transaction();
     try {
       const { productId, colorDetail } = req.body;
+      const parsedColorDetail = JSON.parse(colorDetail || "[]");
+      console.log(colorDetail);
 
-      let parsedColorDetail;
-      try {
-        parsedColorDetail = JSON.parse(colorDetail);
-      } catch (error) {
-        return next(
-          ApiError.badRequest("Invalid JSON format for color detail")
-        );
-      }
-      console.log(parsedColorDetail);
-
-      // Validate required fields
       const requiredFields = [
-        "nameTm",
-        "nameRu",
-        "nameEn",
+        "productTypeNameTm",
+        "productTypeNameRu",
+        "productTypeNameEn",
         "sellPrice",
         "incomePrice",
         "sizesWithQuantities",
@@ -141,33 +208,39 @@ class ProductController {
           return next(ApiError.badRequest(`${field} is required`));
         }
       }
-      // for (const [index, colorDetail] of parsedColorDetail.entries()) {
-      //   for (const field of requiredFields) {
-      //     if (!colorDetail[field]) {
-      //       return next(
-      //         ApiError.badRequest(
-      //           `Field ${field} is required in colorDetail at index ${index}`
-      //         )
-      //       );
-      //     }
-      //   }
-      // }
 
       const product = await Product.findByPk(productId);
       if (!product) {
         return next(ApiError.badRequest("Product not found"));
       }
 
+      const { imageOne, imageTwo, imageThree, imageFour, imageFive } =
+        req.files || {};
+
+      const imagePaths = {
+        imageOne: imageOne?.[0]?.filename || null,
+        imageTwo: imageTwo?.[0]?.filename || null,
+        imageThree: imageThree?.[0]?.filename || null,
+        imageFour: imageFour?.[0]?.filename || null,
+        imageFive: imageFive?.[0]?.filename || null,
+      };
+      const hasAtLeastOneImage = Object.values(imagePaths).some(
+        (filename) => filename !== null
+      );
+
+      if (!hasAtLeastOneImage) {
+        return res
+          .status(400)
+          .json({ message: "At least one image is required." });
+      }
+
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/${req.files.minImage[0].filename}`
+        ? req.files.minImage[0].filename
         : null;
 
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/${req.files.hoverImage[0].filename}`
+        ? req.files.hoverImage[0].filename
         : null;
-
-      const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
 
       if (!minImagePath || !hoverImagePath) {
         return next(
@@ -178,15 +251,46 @@ class ProductController {
       const newColorDetail = {
         ...parsedColorDetail,
         productId,
+        descriptionTm: parsedColorDetail.descriptionTm,
+        descriptionRu: parsedColorDetail.descriptionRu,
+        descriptionEn: parsedColorDetail.descriptionEn,
+        discount_priceTMT: parsedColorDetail.discount_priceTMT,
+        discount_pricePercent: parsedColorDetail.discount_pricePercent,
+        sellPrice: parsedColorDetail.sellPrice,
+        incomePrice: parsedColorDetail.incomePrice,
         minImage: minImagePath,
+        sizeTableId: parsedColorDetail.sizeTableId,
+        typeStatusId: parsedColorDetail.typeStatusId,
         hoverImage: hoverImagePath,
-        fullImages: fullImagePaths,
+        ...imagePaths,
       };
 
       const createdColorDetail = await ProductColorDetails.create(
         newColorDetail,
         { transaction }
       );
+
+      // for (const detail of parsedColorDetail) {
+      for (const sizeData of parsedColorDetail.sizesWithQuantities) {
+        console.log(sizeData.size);
+
+        if (!sizeData.size) {
+          return next(ApiError.badRequest("Size name can't be null"));
+        }
+
+        await Size.create(
+          {
+            productId: product.id,
+
+            size: sizeData.size,
+            quantity: sizeData.quantity || 0,
+            sizeTableId: parsedColorDetail.sizeTableId,
+            colorDetailId: createdColorDetail.id, // Ensure this is defined
+          },
+          { transaction }
+        );
+      }
+      // }
       await transaction.commit();
 
       return res.status(201).json({
@@ -204,13 +308,15 @@ class ProductController {
     try {
       const {
         nameTm,
-        nameRu,
         nameEn,
+        nameRu,
         barcode,
         categoryId,
         subCategoryId,
+        segmentId,
+        brandId,
         isActive,
-        id, // Product ID
+        id,
       } = req.body;
 
       // Validate required fields
@@ -221,6 +327,8 @@ class ProductController {
         "barcode",
         "categoryId",
         "subCategoryId",
+        "segmentId",
+        "brandId",
         "id", // Product ID must be included
       ];
 
@@ -228,6 +336,22 @@ class ProductController {
         if (!req.body[field]) {
           return next(ApiError.badRequest(`${field} is required`));
         }
+      }
+      const category = await Category.findByPk(categoryId);
+      if (!category) {
+        return res.status(400).json({ message: "Category not found." });
+      }
+      const subcategory = await SubCategory.findByPk(subCategoryId);
+      if (!subcategory) {
+        return res.status(400).json({ message: "subCategory not found." });
+      }
+      const segment = await Segment.findByPk(segmentId);
+      if (!segment) {
+        return res.status(400).json({ message: "segment not found." });
+      }
+      const brand = await Brand.findByPk(brandId);
+      if (!brand) {
+        return res.status(400).json({ message: "segment not found." });
       }
 
       // Check if the product exists
@@ -246,8 +370,10 @@ class ProductController {
           categoryId,
           subCategoryId,
           isActive: isActive ?? product.isActive, // Update isActive only if provided
+          segmentId,
+          brandId,
         },
-        { transaction }
+        { where: { id }, transaction }
       );
 
       // Commit the transaction
@@ -264,7 +390,6 @@ class ProductController {
     }
   }
 
-  
   async updateProductDetails(req, res, next) {
     const transaction = await sequelize.transaction(); // Start a transaction
     try {
@@ -273,65 +398,138 @@ class ProductController {
 
       // Required fields for product details
       const requiredFields = [
-        "nameTm",
-        "nameRu",
-        "nameEn",
+        "productTypeNameTm",
+        "productTypeNameRu",
+        "productTypeNameEn",
         "sellPrice",
         "incomePrice",
         "sizesWithQuantities",
       ];
 
-      // Validate required fields for the color detail
-      for (const field of requiredFields) {
-        if (!parsedColorDetail[field]) {
-          return next(
-            ApiError.badRequest(`${field} is required in product color detail`)
-          );
+      console.log(parsedColorDetail);
+      for (const color of parsedColorDetail) {
+        for (const field of requiredFields) {
+          if (!color[field]) {
+            return next(
+              ApiError.badRequest(
+                `${field} is required in product color detail`
+              )
+            );
+          }
         }
       }
 
-      // Check if product exists
       const product = await Product.findByPk(productId);
       if (!product) {
         return next(ApiError.badRequest("Product not found"));
       }
 
-      // Parse the images from the request if provided
       const minImagePath = req.files?.minImage?.[0]?.filename
-        ? `/${req.files.minImage[0].filename}`
+        ? req.files.minImage[0].filename
         : null;
       const hoverImagePath = req.files?.hoverImage?.[0]?.filename
-        ? `/${req.files.hoverImage[0].filename}`
+        ? req.files.hoverImage[0].filename
         : null;
-      const fullImagePaths =
-        req.files?.fullImages?.map((file) => `/${file.filename}`) || [];
+      const imageUpdates = {
+        imageOne:
+          req.files?.imageOne?.[0]?.filename ??
+          (product.imageOne !== null ? product.imageOne : null),
 
-      // Update the existing color detail if colorDetailId is provided
+        imageTwo:
+          req.body.imageTwo === "null"
+            ? null
+            : req.files?.imageTwo?.[0]?.filename ?? product.imageTwo,
+
+        imageThree:
+          req.body.imageThree === "null"
+            ? null
+            : req.files?.imageThree?.[0]?.filename ?? product.imageThree,
+
+        imageFour:
+          req.body.imageFour === "null"
+            ? null
+            : req.files?.imageFour?.[0]?.filename ?? product.imageFour,
+
+        imageFive:
+          req.body.imageFive === "null"
+            ? null
+            : req.files?.imageFive?.[0]?.filename ?? product.imageFive,
+      };
+
       if (colorDetailId) {
-        // Find the existing color detail by its ID and productId
         const existingColorDetail = await ProductColorDetails.findOne({
           where: {
             id: colorDetailId,
             productId: product.id,
           },
+          transaction,
         });
 
         if (existingColorDetail) {
-          // Update the existing color detail
-          await existingColorDetail.update(
-            {
-              ...parsedColorDetail, // Update with new details
-              minImage: minImagePath || existingColorDetail.minImage,
-              hoverImage: hoverImagePath || existingColorDetail.hoverImage,
-              fullImages: fullImagePaths.length
-                ? fullImagePaths
-                : existingColorDetail.fullImages,
-              sizesWithQuantities:
-                parsedColorDetail.sizesWithQuantities ||
-                existingColorDetail.sizesWithQuantities,
-            },
-            { transaction }
-          );
+          for (const detail of parsedColorDetail) {
+            await ProductColorDetails.update(
+              {
+                productTypeNameTm:
+                  detail.productTypeNameTm ||
+                  existingColorDetail.productTypeNameTm,
+                productTypeNameRu:
+                  detail.productTypeNameRu ||
+                  existingColorDetail.productTypeNameRu,
+                productTypeNameEn:
+                  detail.productTypeNameEn ||
+                  existingColorDetail.productTypeNameEn,
+                descriptionTm:
+                  detail.descriptionTm || existingColorDetail.descriptionTm,
+                descriptionRu:
+                  detail.descriptionRu || existingColorDetail.descriptionRu,
+                descriptionEn:
+                  detail.descriptionEn || existingColorDetail.descriptionEn,
+                sellPrice: detail.sellPrice || existingColorDetail.sellPrice,
+                sizeTableId:
+                  detail.sizeTableId || existingColorDetail.sizeTableId,
+                typeStatusId:
+                  detail.typeStatusId || existingColorDetail.typeStatusId,
+
+                incomePrice:
+                  detail.incomePrice || existingColorDetail.incomePrice,
+                minImage: minImagePath || existingColorDetail.minImage,
+                hoverImage: hoverImagePath || existingColorDetail.hoverImage,
+                ...imageUpdates,
+                sizesWithQuantities:
+                  detail.sizesWithQuantities ||
+                  existingColorDetail.sizesWithQuantities,
+              },
+              { where: { id: colorDetailId }, transaction }
+            );
+          }
+          for (const detail of parsedColorDetail) {
+            for (const sizeData of detail.sizesWithQuantities) {
+              const { id, quantity } = sizeData;
+              console.log(sizeData);
+
+              if (id) {
+                const existingSize = await Size.findByPk(id);
+                console.log(existingSize);
+
+                if (existingSize) {
+                  await Size.update(
+                    {
+                      quantity,
+                    },
+                    {
+                      where: { id: id },
+                      transaction,
+                    }
+                  );
+                } else {
+                  await transaction.rollback();
+                  return next(ApiError.badRequest("Size not found"));
+                }
+              } else {
+                return next(ApiError.badRequest("Size ID is required"));
+              }
+            }
+          }
         } else {
           return next(
             ApiError.badRequest(
@@ -347,7 +545,7 @@ class ProductController {
       await transaction.commit();
 
       return res.status(200).json({
-        message: "Product color detail updated successfully",
+        message: "Product color detail and sizes updated successfully",
       });
     } catch (error) {
       await transaction.rollback(); // Rollback on error
@@ -359,13 +557,15 @@ class ProductController {
       );
     }
   }
-  
+
   async getAll(req, res, next) {
     try {
       const filter = {};
       const {
         categoryId,
         subCategoryId,
+        segmentId,
+        brandId,
         minPrice,
         maxPrice,
         nameTm,
@@ -388,7 +588,12 @@ class ProductController {
       if (subCategoryId) {
         whereConditions.subCategoryId = subCategoryId;
       }
-
+      if (segmentId) {
+        whereConditions.segmentId = segmentId;
+      }
+      if (brandId) {
+        whereConditions.brandId = brandId;
+      }
       if (maxPrice || minPrice) {
         const priceCondition = [];
         if (maxPrice) {
@@ -435,6 +640,7 @@ class ProductController {
             as: "ProductColorDetails",
             where: filter,
             // Uncomment to exclude timestamps
+
             // attributes: { exclude: ['createdAt', 'updatedAt'] },
           },
           {
@@ -462,36 +668,53 @@ class ProductController {
     }
   }
 
-
   async getOne(req, res, next) {
     try {
       const { id, sortBy = "createdAt" } = req.query;
 
       if (!id) {
-        return next(ApiError.badRequest("Id giriz!"));
+        return next(ApiError.badRequest("Id giriz!")); // "Enter ID!"
       }
 
-      // Validate the existence of the product
+      // Validate the product exists
       const productExist = await Product.findByPk(id);
       if (!productExist) {
-        return next(ApiError.badRequest("Haryt tapylmady!"));
+        return next(ApiError.badRequest("Haryt tapylmady!")); // "Product not found!"
       }
 
-      // Fetch the product with associated color details, sizeTable, and sizes
+      // Fetch product along with sizes
       const product = await Product.findOne({
         where: { id },
         include: [
           {
             model: ProductColorDetails,
             as: "ProductColorDetails",
+            include: [
+              {
+                model: Size,
+                as: "sizes",
+                // attributes: { exclude: ["createdAt", "updatedAt"] },
+                attributes: ["id", "size", "quantity", "sizeTableId"],
+                // where: id ? { productId: id } : {},
+              },
+            ],
+            // include: [
+            //   {
+            //     model: SizeTable,
+            //     as: "sizeTable",
+            //     // where: filter,
+            //     attributes: { exclude: ["createdAt", "updatedAt"] },
+
+            //   },
+            // ],
           },
         ],
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt"] }, // Exclude timestamps
         order: [[sortBy, "ASC"]],
       });
 
       if (!product) {
-        return next(ApiError.badRequest("Product not found"));
+        return next(ApiError.badRequest("Haryt tapylmady!")); // "Product not found!"
       }
 
       return res.status(200).json(product);
@@ -500,7 +723,32 @@ class ProductController {
       return next(ApiError.badRequest(error.message));
     }
   }
+  async getOneProductColor(req, res, next) {
+    try {
+      const { id, sortBy = "createdAt" } = req.query;
 
+      if (!id) {
+        return next(ApiError.badRequest("Id giriz!"));
+      }
+
+      // Validate the product exists
+      const productColorExist = await ProductColorDetails.findByPk(id);
+      if (!productColorExist) {
+        return next(ApiError.badRequest("Haryt görnüşi tapylmady!"));
+      }
+
+      // Fetch product along with sizes
+      const product = await ProductColorDetails.findOne({
+        where: { id },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        order: [[sortBy, "ASC"]],
+      });
+      return res.status(200).json(product);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      return next(ApiError.badRequest(error.message));
+    }
+  }
   async deleteProduct(req, res, next) {
     const transaction = await sequelize.transaction();
     try {

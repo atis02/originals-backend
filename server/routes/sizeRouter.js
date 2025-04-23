@@ -1,27 +1,7 @@
 const Router = require("express");
-const { SizeTable, Size } = require("../models/model");
+const { SizeTable, Size, SizeTableType } = require("../models/model");
+const ApiError = require("../error/apiError");
 const router = new Router();
-// const CategoryController = require('../controllers/categoryController')
-// const multer = require('multer')
-// const path = require('path')
-
-// const storage = multer.diskStorage({
-//     destination: function (req, file, cb) {
-//         cb(null, path.join(__dirname, '../static'))
-//     },
-//     filename: function (req, file, cb) {
-//         const uniqueFilename = `${Date.now()}_${file.originalname.replace(/\s+/g, '_')}`;
-//         cb(null, uniqueFilename);
-//     }
-// })
-// const upload = multer({ storage: storage })
-
-// router.patch("/update/categoryImg", upload.single("file"), CategoryController.uploadCategoryImage)
-// router.post('/add', upload.single('image'),CategoryController.create)
-// router.get('/all',CategoryController.getAll)
-// router.get('/getOne',CategoryController.getOne)
-// router.delete('/remove',CategoryController.remove)
-// router.patch('/update',upload.single('image'),CategoryController.update)
 
 router.post("/size-tables", async (req, res) => {
   try {
@@ -35,19 +15,83 @@ router.post("/size-tables", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+router.post("/size-table-types", async (req, res) => {
+  try {
+    const { sizeTableId, name } = req.body;
 
+    if (!name || !sizeTableId) {
+      return res
+        .status(400)
+        .json({ error: "size or sizeTableId  is required" });
+    }
+    const sizeTable = await SizeTableType.create({ name, sizeTableId });
+    res.status(201).json(sizeTable);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+router.put("/size-table-types/update", async (req, res, next) => {
+  try {
+    const { name, id } = req.body;
+
+    if (!name || !id) {
+      return res
+        .status(400)
+        .json({ error: "size or sizeTableId  is required" });
+    }
+    existSizeTable = await SizeTableType.findByPk(id);
+    if (!existSizeTable) {
+      return next(ApiError.notFound(`SizeTableType is not defined`));
+    }
+    const sizeTable = await SizeTableType.update(
+      { name: name }, // Values to update
+      { where: { id: id } }
+    );
+    res.status(201).json(sizeTable);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// router.get("/all", async (req, res) => {
+//   try {
+//     const sizeTables = await SizeTable.findAll({
+//       // where: { id },
+//       include: {
+//         model: SizeTableType,
+//         as: "types",
+//         attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+//       },
+//       attributes: { exclude: ["createdAt", "updatedAt"] },
+//     });
+//     res.status(200).json(sizeTables);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 router.get("/all", async (req, res) => {
   try {
     const sizeTables = await SizeTable.findAll({
-      // where: { id },
       include: {
-        model: Size,
-        as: "sizes",
-        attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+        model: SizeTableType,
+        as: "types",
+        attributes: { exclude: ["createdAt", "updatedAt", "sizeTableId"] }, // Corrected categoryId to sizeTableId
       },
       attributes: { exclude: ["createdAt", "updatedAt"] },
     });
-    res.status(200).json(sizeTables);
+
+    // Sort the "types" array within each sizeTable
+    const sortedSizeTables = sizeTables.map((sizeTable) => {
+      return {
+        ...sizeTable.toJSON(), // Convert to plain object to avoid Sequelize issues
+        types: sizeTable.types.sort((a, b) => {
+          const nameA = parseInt(a.name, 10);
+          const nameB = parseInt(b.name, 10);
+          return nameA - nameB;
+        }),
+      };
+    });
+
+    res.status(200).json(sortedSizeTables);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
